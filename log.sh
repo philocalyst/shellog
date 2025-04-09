@@ -265,8 +265,7 @@ log() {
     console_level_num="$(_get_severity "$(echo "$BASHLOG_CONSOLE_LEVEL" | tr '[:lower:]' '[:upper:]')")"
     
     # Output if severity meets threshold or debug is enabled for DEBUG level
-    if [ "$severity" -le "$console_level_num" ] || [ "$debug_level" -gt 0 -a "$upper" = "DEBUG" ]; then
-      local color="$(_get_color "$upper")"
+    if [[ "$severity" -le "$console_level_num" || ( "$debug_level" -gt 0 && "$upper" == "DEBUG" ) ]]; then
       local color
       color="$(_get_color "$upper")"
       local std_line="${date} [${upper}] ${message}"
@@ -300,19 +299,18 @@ log_emerg() { log emerg "$@"; }
 # Function to set all log destinations
 set_log_destinations() {
   local console="${1:-1}"
-  local file="${2:-0}"
+  # local file="${2:-0}"
   local json="${3:-0}"
   local syslog="${4:-0}"
   
   BASHLOG_CONSOLE="$console"
-  BASHLOG_FILE="$file"
+  # BASHLOG_FILE="$file"
   BASHLOG_JSON="$json"
   BASHLOG_SYSLOG="$syslog"
 }
 
 # Command tracing via trap 
 if [ "$DEBUG" -gt 0 ]; then
-  declare prev_cmd="null"
   declare this_cmd="null"
   trap 'prev_cmd=$this_cmd; this_cmd=$BASH_COMMAND' DEBUG \
     && log debug 'DEBUG trap set' \
