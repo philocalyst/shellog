@@ -48,7 +48,8 @@ _rotate_log() {
   local log_file="$1"
   
   if [ -f "$log_file" ] && [ "$(stat -c %s "$log_file" 2>/dev/null || stat -f %z "$log_file")" -gt "$BASHLOG_ROTATION_SIZE" ]; then
-    local backup="${log_file}.$(date +%Y%m%d%H%M%S)"
+    local backup
+    backup="${log_file}.$(date +%Y%m%d%H%M%S)"
     mv "$log_file" "$backup" || _log_exception "Failed to rotate log file"
     log info "Rotated log file to $backup"
   fi
@@ -164,8 +165,10 @@ _create_json_entry() {
       }" >> "$log_path" || _log_exception "Failed to write to JSON log file: $log_path"
   else
     # Fallback without jq - basic JSON formatting
-    local json_msg="$(echo "$message" | sed 's/"/\\"/g')"
-    local json_entry="$(printf '{"timestamp":"%s","timestamp_epoch":%s,"level":"%s","message":"%s","pid":%s,"application":"%s"' \
+    local json_msg
+    json_msg="$(echo "$message" | sed 's/"/\\"/g')"
+    local json_entry
+    json_entry="$(printf '{"timestamp":"%s","timestamp_epoch":%s,"level":"%s","message":"%s","pid":%s,"application":"%s"' \
       "$date" "$date_s" "$upper" "$json_msg" "$pid" "$(basename "$0")")"
     
     # Add data if present
@@ -183,7 +186,8 @@ _create_json_entry() {
         shift 2 || break
         
         # Escape the value
-        local esc_value="$(echo "$value" | sed 's/"/\\"/g')"
+        local esc_value
+        esc_value="$(echo "$value" | sed 's/"/\\"/g')"
         
         # Add to JSON
         json_entry="${json_entry}\"$key\":\"$esc_value\""
@@ -208,18 +212,22 @@ log() {
   fi
 
   local level="$1"
-  local upper="$(echo "$level" | tr '[:lower:]' '[:upper:]')"
+  local upper
+  upper="$(echo "$level" | tr '[:lower:]' '[:upper:]')"
   local message="$2"
   shift 2
   
   local date_format="$BASHLOG_DATE_FORMAT"
-  local date="$(date "$date_format")"
-  local date_s="$(date "+%s")"
+  local date
+  date="$(date "$date_format")"
+  local date_s
+  date_s="$(date "+%s")"
   local pid="$$"
   local debug_level="$DEBUG"
   
   # Get severity level
-  local severity="$(_get_severity "$upper")"
+  local severity
+  severity="$(_get_severity "$upper")"
   
   # Determine if we should log based on debug level
   if [ "$debug_level" -gt 0 ] || [ "$severity" -lt 7 ]; then
@@ -253,11 +261,14 @@ log() {
   # Console output with colors
   if [ "$BASHLOG_CONSOLE" -eq 1 ]; then
     # Get console level threshold
-    local console_level_num="$(_get_severity "$(echo "$BASHLOG_CONSOLE_LEVEL" | tr '[:lower:]' '[:upper:]')")"
+    local console_level_num
+    console_level_num="$(_get_severity "$(echo "$BASHLOG_CONSOLE_LEVEL" | tr '[:lower:]' '[:upper:]')")"
     
     # Output if severity meets threshold or debug is enabled for DEBUG level
     if [ "$severity" -le "$console_level_num" ] || [ "$debug_level" -gt 0 -a "$upper" = "DEBUG" ]; then
       local color="$(_get_color "$upper")"
+      local color
+      color="$(_get_color "$upper")"
       local std_line="${date} [${upper}] ${message}"
       
       # Output to the appropriate file descriptor
