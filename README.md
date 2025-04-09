@@ -36,7 +36,7 @@ ShelLog provides a flexible, feature-rich, and dependency free logging solution 
 2.  **Integrate into your script:**
     Source the `shellog` file at the beginning of your script *after* setting any custom configuration variables.
 
-    ```bash
+    ```diff
     #!/usr/bin/env bash
 
     # Optional: Override ShelLog configuration variables HERE
