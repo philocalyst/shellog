@@ -40,7 +40,7 @@ _log_exception() {
     BASHLOG_SYSLOG=0
     BASHLOG_CONSOLE=1
     
-    ansi --bold --red "%s [ERROR] Logging Exception: \n" "$(date "$BASHLOG_DATE_FORMAT")" "$*" >&2
+    ansi --bold --red "%s [ERROR] Logging Exception: %s\n" "$(date "$BASHLOG_DATE_FORMAT")" "$*" >&2
   )
 }
 
