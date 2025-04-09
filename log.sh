@@ -55,57 +55,8 @@ _rotate_log() {
   fi
 }
 
-# Function to create JSON log entry with jq
-_create_json_entry() {
-  local timestamp="$1"
-  local level="$2"
-  local message="$3"
-  local timestamp_s="$4"
-  local pid="$5"
-  
-  if [ "$BASHLOG_HAS_JQ" -eq 1 ]; then
-    # Using jq to properly escape and format the JSON
-    jq -n \
-      --arg ts "$timestamp" \
-      --arg ts_s "$timestamp_s" \
-      --arg lvl "$level" \
-      --arg msg "$message" \
-      --arg pid "$pid" \
-      --arg app "$(basename "$0")" \
-      '{
-        timestamp: $ts,
-        timestamp_epoch: $ts_s|tonumber,
-        level: $lvl,
-        message: $msg,
-        pid: $pid|tonumber,
-        application: $app
-      }'
-  else
-    # Fallback for systems without jq - basic escaping
-    local json_msg="$(echo "$message" | sed 's/"/\\"/g')"
-    printf '{"timestamp":"%s","timestamp_epoch":%s,"level":"%s","message":"%s","pid":%s,"application":"%s"}' \
-      "$timestamp" "$timestamp_s" "$level" "$json_msg" "$pid" "$(basename "$0")"
-  fi
 }
 
-# Function to add structured data to log
-log_with_data() {
-  local level="$1"
-  local message="$2"
-  shift 2
-  
-  # Check if additional data is provided
-  if [ "$#" -eq 0 ]; then
-    log "$level" "$message"
-    return
-  fi
-  
-  # Process normal logging without JSON data
-  local date_format="$BASHLOG_DATE_FORMAT"
-  local date="$(date "$date_format")"
-  local date_s="$(date "+%s")"
-  local pid="$$"
-  local upper="$(echo "$level" | tr '[:lower:]' '[:upper:]')"
   
   # Define severity levels (RFC 5424)
   local severity
@@ -125,38 +76,36 @@ log_with_data() {
       ;;
   esac
   
-  # Handle regular logging to console/file/syslog
-  if [ "$BASHLOG_CONSOLE" -eq 1 ] || [ "$BASHLOG_FILE" -eq 1 ] || [ "$BASHLOG_SYSLOG" -eq 1 ]; then
-    log "$level" "$message"
+  # Determine if we have additional data
+  local has_data=0
+  if [ "$#" -gt 0 ]; then
+    has_data=1
   fi
+
+  # Ensure log directory exists and rotate if needed
+  _ensure_log_dir "$log_path"
+  _rotate_log "$log_path"
   
-  # Special JSON handling for structured data
-  if [ "$BASHLOG_JSON" -eq 1 ]; then
-    # Rotate log if needed
-    _rotate_log "$BASHLOG_JSON_PATH"
+  if [ "$BASHLOG_HAS_JQ" -eq 1 ]; then
+    # Using jq to properly escape and format the JSON
+    local jq_args=(
+      --arg ts "$date"
+      --arg ts_s "$date_s"
+      --arg lvl "$upper"
+      --arg msg "$message"
+      --arg pid "$pid"
+      --arg app "$(basename "$0")"
+    )
     
-    # Ensure log directory exists
-    mkdir -p "$(dirname "$BASHLOG_JSON_PATH")" 2>/dev/null || true
-    
-    # Create JSON with structured data
-    if [ "$BASHLOG_HAS_JQ" -eq 1 ]; then
-      # Build data arguments for jq
-      local jq_args=(
-        --arg ts "$date"
-        --arg ts_s "$date_s"
-        --arg lvl "$upper"
-        --arg msg "$message"
-        --arg pid "$pid"
-        --arg app "$(basename "$0")"
-      )
-      
-      # Build the JSON data object
-      local data_json="{"
+    # Build data object if we have additional data
+    local data_expr=""
+    if [ "$has_data" -eq 1 ]; then
+      data_expr=", data: {"
       local first=1
       
       while [ "$#" -gt 0 ]; do
         if [ "$first" -eq 0 ]; then
-          data_json="${data_json},"
+          data_expr="${data_expr},"
         fi
         
         local key="$1"
@@ -166,33 +115,38 @@ log_with_data() {
         # Add to jq args
         jq_args+=(--arg "k_$key" "$key" --arg "v_$key" "$value")
         
-        # Add to data JSON
-        data_json="${data_json}\$k_$key: \$v_$key"
+        # Add to data expression
+        data_expr="${data_expr} \$k_$key: \$v_$key"
         first=0
       done
       
-      data_json="${data_json}}"
-      
-      # Create full JSON entry with jq
-      jq -n "${jq_args[@]}" \
-        "{
-          timestamp: \$ts,
-          timestamp_epoch: \$ts_s|tonumber,
-          level: \$lvl,
-          message: \$msg,
-          pid: \$pid|tonumber,
-          application: \$app,
-          data: $data_json
-        }" >> "$BASHLOG_JSON_PATH" || _log_exception "Failed to write to JSON log file: $BASHLOG_JSON_PATH"
-    else
-      # Fallback without jq - basic structured data
-      local json_msg="$(echo "$message" | sed 's/"/\\"/g')"
-      local data_json='"data":{'
+      data_expr="${data_expr} }"
+    fi
+    
+    # Create full JSON entry with jq
+    jq -n "${jq_args[@]}" \
+      "{
+        timestamp: \$ts,
+        timestamp_epoch: \$ts_s|tonumber,
+        level: \$lvl,
+        message: \$msg,
+        pid: \$pid|tonumber,
+        application: \$app${data_expr}
+      }" >> "$log_path" || _log_exception "Failed to write to JSON log file: $log_path"
+  else
+    # Fallback without jq - basic JSON formatting
+    local json_msg="$(echo "$message" | sed 's/"/\\"/g')"
+    local json_entry="$(printf '{"timestamp":"%s","timestamp_epoch":%s,"level":"%s","message":"%s","pid":%s,"application":"%s"' \
+      "$date" "$date_s" "$upper" "$json_msg" "$pid" "$(basename "$0")")"
+    
+    # Add data if present
+    if [ "$has_data" -eq 1 ]; then
+      json_entry="${json_entry},\"data\":{"
       local first=1
       
       while [ "$#" -gt 0 ]; do
         if [ "$first" -eq 0 ]; then
-          data_json="${data_json},"
+          json_entry="${json_entry},"
         fi
         
         local key="$1"
@@ -202,17 +156,17 @@ log_with_data() {
         # Escape the value
         local esc_value="$(echo "$value" | sed 's/"/\\"/g')"
         
-        # Add to data JSON
-        data_json="${data_json}\"$key\":\"$esc_value\""
+        # Add to JSON
+        json_entry="${json_entry}\"$key\":\"$esc_value\""
         first=0
       done
       
-      data_json="${data_json}}"
-      
-      printf '{"timestamp":"%s","timestamp_epoch":%s,"level":"%s","message":"%s","pid":%s,"application":"%s",%s}\n' \
-        "$date" "$date_s" "$upper" "$json_msg" "$pid" "$(basename "$0")" "$data_json" \
-        >> "$BASHLOG_JSON_PATH" || _log_exception "Failed to write to JSON log file: $BASHLOG_JSON_PATH"
+      json_entry="${json_entry}}"
     fi
+    
+    # Close the JSON object and write to file
+    json_entry="${json_entry}}\n"
+    printf "$json_entry" >> "$log_path" || _log_exception "Failed to write to JSON log file: $log_path"
   fi
 }
 
