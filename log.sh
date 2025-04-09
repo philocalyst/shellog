@@ -1,4 +1,4 @@
-#!/usr/bin/env dash
+#!/usr/bin/env bash
 
 # BashLog: A lightweight logging library for dash/bash scripts
 # Usage: source this file, then use log <level> <message> [data_key data_value ...]
