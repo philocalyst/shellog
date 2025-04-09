@@ -3,8 +3,9 @@
 
 ShelLog provides a flexible, feature-rich, and dependency free logging solution for your Bash scripts. As long as you have a shell interpreter, it works. It allows you to easily log messages to various destinations like the console, files, JSON files, and syslog, with support for different log levels, structured data, automatic log rotation, and colored console output.
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/YOUR_USERNAME/shellog)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) ## Features
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+## Features
 
 * **Multiple Log Levels:** Supports standard syslog levels (DEBUG, INFO, NOTICE, WARN, ERROR, CRIT, ALERT, EMERG).
 * **Multiple Output Destinations:**
