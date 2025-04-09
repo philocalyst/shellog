@@ -96,7 +96,7 @@ _get_color() {
 }
 
 # Create JSON entry
-_write_json_log() {
+_create_json_entry() {
   local date="$1"
   local date_s="$2"
   local upper="$3"
@@ -224,17 +224,20 @@ log() {
   # Determine if we should log based on debug level
   if [ "$debug_level" -gt 0 ] || [ "$severity" -lt 7 ]; then
     # Syslog output
-    if [ "$BASHLOG_SYSLOG" -eq 1 ]; then
+    if [ "$BASHLOG_SYSLOG" -eq 1 ] && [ "$BASHLOG_JSON" -eq 0 ]; then
       logger \
         --id="$pid" \
         -t "$BASHLOG_SYSLOG_TAG" \
         -p "$BASHLOG_SYSLOG_FACILITY.$severity" \
         "$upper: $message" \
         || _log_exception "Failed to write to syslog"
+    elif [ "$BASHLOG_SYSLOG" -eq 0 ] && [ "$BASHLOG_JSON" -eq 1 ]; then
+    # Use link to stdout to keep it simple
+      _create_json_entry "$date" "$date_s" "$upper" "$message" "$pid" "/dev/stdout" "$@"
     fi
 
     # File output
-    if [ "$BASHLOG_FILE" -eq 1 ]; then
+    if [ "$BASHLOG_FILE_PATH" ]; then # If path is non-empty, assume meant to print here
       _ensure_log_dir "$BASHLOG_FILE_PATH"
       _rotate_log "$BASHLOG_FILE_PATH"
       printf "%s [%s] %s\n" "$date" "$upper" "$message" >> "$BASHLOG_FILE_PATH" \
@@ -243,7 +246,7 @@ log() {
 
     # JSON output (with or without data)
     if [ "$BASHLOG_JSON" -eq 1 ]; then
-      _write_json_log "$date" "$date_s" "$upper" "$message" "$pid" "$BASHLOG_JSON_PATH" "$@"
+      _create_json_entry "$date" "$date_s" "$upper" "$message" "$pid" "$BASHLOG_JSON_PATH" "$@"
     fi
   fi
 
