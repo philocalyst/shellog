@@ -1,13 +1,14 @@
 #!/usr/bin/env dash
 
 # BashLog: A lightweight logging library for dash/bash scripts
-# Usage: source this file, then use log <level> <message>
-# Example: log info "Starting process"
+# Usage: source this file, then use log <level> <message> [data_key data_value ...]
+# Example: log info "Starting process" 
+#          log info "User logged in" username "john.doe" ip "192.168.1.1"
 
 # Exit on errors, undefined variables, and propagate pipe failures
 set -eo pipefail
 
-source ansi/ansi
+source bashansi/ansi
 
 # Configuration with defaults (can be overridden before sourcing)
 : "${BASHLOG_DATE_FORMAT:=+%F %T}"
