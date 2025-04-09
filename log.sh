@@ -313,5 +313,10 @@ if [ "$DEBUG" -gt 0 ]; then
   fi
 fi
 
+bool_to_string () {
+  declare -a BASHLOG_JSON_STATUS=("off" "on")
+  echo ${BASHLOG_JSON_STATUS[$1]}
+}
+
 # Log library initialization
-log_info "BashLog initialized with jq support: $BASHLOG_HAS_JQ (PID: $$)"
+log_info "BashLog initialized! JSON is $(bool_to_string $BASHLOG_JSON) (PID: $$)"
