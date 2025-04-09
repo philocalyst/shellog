@@ -6,19 +6,19 @@ set -eo pipefail
 # --- Configuration ---
 
 # Set the DEBUG level (0=disabled, 1=debug messages, 2=trace commands)
-export DEBUG=1 # Set to 1 or higher to see debug/trace logs from bashlog
+export DEBUG=1 # Set to 1 or higher to see debug/trace logs from SHELLOG
 
-# Configure BashLog settings (can be overridden by environment variables)
-export BASHLOG_FILE=${BASHLOG_FILE:-1}
-export BASHLOG_FILE_PATH=${BASHLOG_FILE_PATH:-"/tmp/bashansi_test.log"}
-export BASHLOG_JSON=${BASHLOG_JSON:-1}
-export BASHLOG_JSON_PATH=${BASHLOG_JSON_PATH:-"/tmp/bashansi_test.log.json"}
-export BASHLOG_CONSOLE=${BASHLOG_CONSOLE:-1}
-export BASHLOG_CONSOLE_LEVEL=${BASHLOG_CONSOLE_LEVEL:-"INFO"} # Log INFO and above to console
-export BASHLOG_SYSLOG=${BASHLOG_SYSLOG:-0} # Disable syslog for this script
-export BASHLOG_SYSLOG_TAG="bashansi_test"
+# Configure SHELLOG settings (can be overridden by environment variables)
+export SHELLOG_FILE=${SHELLOG_FILE:-1}
+export SHELLOG_FILE_PATH=${SHELLOG_FILE_PATH:-"/tmp/bashansi_test.log"}
+export SHELLOG_JSON=${SHELLOG_JSON:-1}
+export SHELLOG_JSON_PATH=${SHELLOG_JSON_PATH:-"/tmp/bashansi_test.log.json"}
+export SHELLOG_CONSOLE=${SHELLOG_CONSOLE:-1}
+export SHELLOG_CONSOLE_LEVEL=${SHELLOG_CONSOLE_LEVEL:-"INFO"} # Log INFO and above to console
+export SHELLOG_SYSLOG=${SHELLOG_SYSLOG:-0} # Disable syslog for this script
+export SHELLOG_SYSLOG_TAG="bashansi_test"
 # Increase rotation size if performance logs are large
-export BASHLOG_ROTATION_SIZE=${BASHLOG_ROTATION_SIZE:-10485760} # 10MB
+export SHELLOG_ROTATION_SIZE=${SHELLOG_ROTATION_SIZE:-10485760} # 10MB
 
 # --- Dependencies and Setup ---
 
@@ -33,7 +33,7 @@ if [ ! -f "$LOG_SCRIPT" ]; then
     exit 1
 fi
 
-# Source the BashLog library AFTER setting configurations
+# Source the SHELLOG library AFTER setting configurations
 source "$LOG_SCRIPT"
 
 # --- Functions ---
@@ -44,9 +44,9 @@ check_dependencies() {
     local missing_deps=0
     local deps=("git" "wc" "stat" "shellcheck" "hyperfine" "jq" "find")
 
-    # Check if jq is actually available, even if bashlog thinks it is
+    # Check if jq is actually available, even if SHELLOG thinks it is
     if ! command -v jq >/dev/null 2>&1; then
-         BASHLOG_HAS_JQ=0 # Update bashlog's internal flag if needed
+         SHELLOG_HAS_JQ=0 # Update SHELLOG's internal flag if needed
          log_warn "jq command not found. JSON logs will use basic formatting."
     fi
 
@@ -255,7 +255,7 @@ run_performance_tests() {
         fi
 
         # If jq is available, parse and log key metrics from JSON more nicely
-        if [ "$BASHLOG_HAS_JQ" -eq 1 ] && [ -s "$hyperfine_json_output" ]; then
+        if [ "$SHELLOG_HAS_JQ" -eq 1 ] && [ -s "$hyperfine_json_output" ]; then
              log_debug "Parsing hyperfine JSON results..."
              jq -c '.results[] | {command: .command, mean: .mean, stddev: .stddev, median: .median, min: .min, max: .max, runs: .times | length}' "$hyperfine_json_output" | while IFS= read -r result_line; do
                 # Log each result object as a structured log entry
@@ -295,10 +295,10 @@ run_performance_tests() {
 # --- Main Execution ---
 
 log_info "===== Starting BashANSI Test ====="
-log_info "Logging to Console: $BASHLOG_CONSOLE (Level: $BASHLOG_CONSOLE_LEVEL)"
-log_info "Logging to File: $BASHLOG_FILE (Path: $BASHLOG_FILE_PATH)"
-log_info "Logging to JSON: $BASHLOG_JSON (Path: $BASHLOG_JSON_PATH)"
-log_info "Logging to Syslog: $BASHLOG_SYSLOG"
+log_info "Logging to Console: $SHELLOG_CONSOLE (Level: $SHELLOG_CONSOLE_LEVEL)"
+log_info "Logging to File: $SHELLOG_FILE (Path: $SHELLOG_FILE_PATH)"
+log_info "Logging to JSON: $SHELLOG_JSON (Path: $SHELLOG_JSON_PATH)"
+log_info "Logging to Syslog: $SHELLOG_SYSLOG"
 
 # Run checks sequentially, logging progress
 check_dependencies # Check basic dependencies first
@@ -320,9 +320,9 @@ echo # Add a newline for cleaner separation in the terminal
 # Display log locations at the end
 echo "test execution complete."
 echo "Log files potentially created/updated:"
-[ "$BASHLOG_CONSOLE" -eq 1 ] && echo "  - Console output above (Level >= $BASHLOG_CONSOLE_LEVEL)"
-[ "$BASHLOG_FILE" -eq 1 ] && [ -n "$BASHLOG_FILE_PATH" ] && echo "  - Text log: $BASHLOG_FILE_PATH"
-[ "$BASHLOG_JSON" -eq 1 ] && [ -n "$BASHLOG_JSON_PATH" ] && echo "  - JSON log: $BASHLOG_JSON_PATH"
+[ "$SHELLOG_CONSOLE" -eq 1 ] && echo "  - Console output above (Level >= $SHELLOG_CONSOLE_LEVEL)"
+[ "$SHELLOG_FILE" -eq 1 ] && [ -n "$SHELLOG_FILE_PATH" ] && echo "  - Text log: $SHELLOG_FILE_PATH"
+[ "$SHELLOG_JSON" -eq 1 ] && [ -n "$SHELLOG_JSON_PATH" ] && echo "  - JSON log: $SHELLOG_JSON_PATH"
 [ -f "/tmp/bashansi_hyperfine_results.txt" ] && echo "  - Hyperfine raw results: /tmp/bashansi_hyperfine_results.txt"
 [ -f "/tmp/bashansi_hyperfine_results.json" ] && echo "  - Hyperfine JSON results: /tmp/bashansi_hyperfine_results.json"
 
