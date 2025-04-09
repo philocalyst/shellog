@@ -23,7 +23,7 @@ export BASHLOG_ROTATION_SIZE=${BASHLOG_ROTATION_SIZE:-10485760} # 10MB
 # --- Dependencies and Setup ---
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
-LOG_SCRIPT="$SCRIPT_DIR/log.sh"
+LOG_SCRIPT="$SCRIPT_DIR/shellog"
 ANSI_SCRIPT="$SCRIPT_DIR/bashansi/ansi" # Path to the ansi script itself
 BASHANSI_DIR="$SCRIPT_DIR/bashansi"
 
