@@ -55,26 +55,56 @@ _rotate_log() {
   fi
 }
 
+# Ensure log directory exists
+_ensure_log_dir() {
+  local log_path="$1"
+  mkdir -p "$(dirname "$log_path")" 2>/dev/null || true
 }
 
-  
-  # Define severity levels (RFC 5424)
-  local severity
+# Get severity number from log level
+_get_severity() {
+  local upper="$1"
   case "$upper" in
-    "DEBUG")   severity=7 ;;
-    "INFO")    severity=6 ;;
-    "NOTICE")  severity=5 ;;
-    "WARN")    severity=4 ;;
-    "ERROR")   severity=3 ;;
-    "CRIT")    severity=2 ;;
-    "ALERT")   severity=1 ;;
-    "EMERG")   severity=0 ;;
+    "DEBUG")   echo 7 ;;
+    "INFO")    echo 6 ;;
+    "NOTICE")  echo 5 ;;
+    "WARN")    echo 4 ;;
+    "ERROR")   echo 3 ;;
+    "CRIT")    echo 2 ;;
+    "ALERT")   echo 1 ;;
+    "EMERG")   echo 0 ;;
     *)         
       _log_exception "Invalid log level: $upper"
-      severity=3
-      upper="ERROR"
+      echo 3  # Default to ERROR
       ;;
   esac
+}
+
+# Get color for log level
+_get_color() {
+  local upper="$1"
+  case "$upper" in
+    "DEBUG")   echo 'blue' ;;
+    "INFO")    echo 'green' ;;
+    "NOTICE")  echo 'cyan' ;;
+    "WARN")    echo 'yellow' ;;
+    "ERROR")   echo 'red' ;;
+    "CRIT")    echo 'white' ;;
+    "ALERT")   echo 'magenta' ;;
+    "EMERG")   echo 'black' ;;
+    *)         echo 'black' ;;
+  esac
+}
+
+# Create JSON entry
+_write_json_log() {
+  local date="$1"
+  local date_s="$2"
+  local upper="$3"
+  local message="$4"
+  local pid="$5"
+  local log_path="$6"
+  shift 6
   
   # Determine if we have additional data
   local has_data=0
@@ -172,43 +202,27 @@ _rotate_log() {
 
 # Main logging function
 log() {
-  local date_format="$BASHLOG_DATE_FORMAT"
-  local date="$(date "$date_format")"
-  local date_s="$(date "+%s")"
-  local pid="$$"
-
   # Validate log level argument
   if [ "$#" -lt 2 ]; then
-    _log_exception "Usage: log <level> <message>"
+    _log_exception "Usage: log <level> <message> [data_key data_value ...]"
     return 1
   fi
 
   local level="$1"
   local upper="$(echo "$level" | tr '[:lower:]' '[:upper:]')"
+  local message="$2"
+  shift 2
+  
+  local date_format="$BASHLOG_DATE_FORMAT"
+  local date="$(date "$date_format")"
+  local date_s="$(date "+%s")"
+  local pid="$$"
   local debug_level="$DEBUG"
-
-  shift 1
-  local line="$*"
-
-  # Define severity levels (RFC 5424)
-  local severity
-  case "$upper" in
-    "DEBUG")   severity=7 ;;
-    "INFO")    severity=6 ;;
-    "NOTICE")  severity=5 ;;
-    "WARN")    severity=4 ;;
-    "ERROR")   severity=3 ;;
-    "CRIT")    severity=2 ;;
-    "ALERT")   severity=1 ;;
-    "EMERG")   severity=0 ;;
-    *)         
-      _log_exception "Invalid log level: $upper"
-      severity=3
-      upper="ERROR"
-      ;;
-  esac
-
-  # Log if debug is enabled or if severity is appropriate
+  
+  # Get severity level
+  local severity="$(_get_severity "$upper")"
+  
+  # Determine if we should log based on debug level
   if [ "$debug_level" -gt 0 ] || [ "$severity" -lt 7 ]; then
     # Syslog output
     if [ "$BASHLOG_SYSLOG" -eq 1 ]; then
@@ -216,67 +230,33 @@ log() {
         --id="$pid" \
         -t "$BASHLOG_SYSLOG_TAG" \
         -p "$BASHLOG_SYSLOG_FACILITY.$severity" \
-        "$upper: $line" \
+        "$upper: $message" \
         || _log_exception "Failed to write to syslog"
     fi
 
     # File output
     if [ "$BASHLOG_FILE" -eq 1 ]; then
-      # Rotate log if needed
+      _ensure_log_dir "$BASHLOG_FILE_PATH"
       _rotate_log "$BASHLOG_FILE_PATH"
-      
-      # Ensure log directory exists
-      mkdir -p "$(dirname "$BASHLOG_FILE_PATH")" 2>/dev/null || true
-      
-      printf "%s [%s] %s\n" "$date" "$upper" "$line" >> "$BASHLOG_FILE_PATH" \
+      printf "%s [%s] %s\n" "$date" "$upper" "$message" >> "$BASHLOG_FILE_PATH" \
         || _log_exception "Failed to write to log file: $BASHLOG_FILE_PATH"
     fi
 
-    # JSON output
+    # JSON output (with or without data)
     if [ "$BASHLOG_JSON" -eq 1 ]; then
-      # Rotate log if needed
-      _rotate_log "$BASHLOG_JSON_PATH"
-      
-      # Ensure log directory exists
-      mkdir -p "$(dirname "$BASHLOG_JSON_PATH")" 2>/dev/null || true
-      
-      # Create JSON entry using jq or fallback method
-      _create_json_entry "$date" "$upper" "$line" "$date_s" "$pid" >> "$BASHLOG_JSON_PATH" \
-        || _log_exception "Failed to write to JSON log file: $BASHLOG_JSON_PATH"
+      _write_json_log "$date" "$date_s" "$upper" "$message" "$pid" "$BASHLOG_JSON_PATH" "$@"
     fi
   fi
 
   # Console output with colors
   if [ "$BASHLOG_CONSOLE" -eq 1 ]; then
-    # Check if console level threshold is met
-    local console_level_num
-    case "$(echo "$BASHLOG_CONSOLE_LEVEL" | tr '[:lower:]' '[:upper:]')" in
-      "DEBUG")   console_level_num=7 ;;
-      "INFO")    console_level_num=6 ;;
-      "NOTICE")  console_level_num=5 ;;
-      "WARN")    console_level_num=4 ;;
-      "ERROR")   console_level_num=3 ;;
-      "CRIT")    console_level_num=2 ;;
-      "ALERT")   console_level_num=1 ;;
-      "EMERG")   console_level_num=0 ;;
-      *)         console_level_num=6 ;; # Default to INFO
-    esac
+    # Get console level threshold
+    local console_level_num="$(_get_severity "$(echo "$BASHLOG_CONSOLE_LEVEL" | tr '[:lower:]' '[:upper:]')")"
     
+    # Output if severity meets threshold or debug is enabled for DEBUG level
     if [ "$severity" -le "$console_level_num" ] || [ "$debug_level" -gt 0 -a "$upper" = "DEBUG" ]; then
-      local color
-      case "$upper" in
-        "DEBUG")   color='blue' ;; # Blue
-        "INFO")    color='green' ;; # Green
-        "NOTICE")  color='cyan' ;; # Cyan
-        "WARN")    color='yellow' ;; # Yellow
-        "ERROR")   color='red' ;; # Red
-        "CRIT")    color='white' ;; # Bold Red
-        "ALERT")   color='magenta' ;; # Bold Magenta
-        "EMERG")   color='black' ;; # White on Red background
-        *)         color='black' ;; # Default
-      esac
-      
-      local std_line="${date} [${upper}] ${line}"
+      local color="$(_get_color "$upper")"
+      local std_line="${date} [${upper}] ${message}"
       
       # Output to the appropriate file descriptor
       if [ "$upper" = "ERROR" ] || [ "$upper" = "CRIT" ] || [ "$upper" = "ALERT" ] || [ "$upper" = "EMERG" ]; then
@@ -303,16 +283,6 @@ log_error() { log error "$@"; }
 log_crit() { log crit "$@"; }
 log_alert() { log alert "$@"; }
 log_emerg() { log emerg "$@"; }
-
-# Log functions with data for each level
-log_debug_data() { log_with_data debug "$@"; }
-log_info_data() { log_with_data info "$@"; }
-log_notice_data() { log_with_data notice "$@"; }
-log_warn_data() { log_with_data warn "$@"; }
-log_error_data() { log_with_data error "$@"; }
-log_crit_data() { log_with_data crit "$@"; }
-log_alert_data() { log_with_data alert "$@"; }
-log_emerg_data() { log_with_data emerg "$@"; }
 
 # Function to set all log destinations
 set_log_destinations() {
