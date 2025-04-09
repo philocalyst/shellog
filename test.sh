@@ -33,7 +33,7 @@ process_file() {
         line_count=$(wc -l < "$filename")
     else
         line_count=$((RANDOM % 100 + 50))
-        log_warn_data "File not found, using simulated data" \
+        log_warn "File not found, using simulated data" \
             "filename" "$filename" \
             "simulated_line_count" "$line_count"
     fi
@@ -41,7 +41,7 @@ process_file() {
     local end_time=$(date +%s)
     local duration=$((end_time - start_time))
     
-    log_notice_data "File processing complete" \
+    log_notice "File processing complete" \
         "filename" "$filename" \
         "line_count" "$line_count" \
         "duration_s" "$duration"
@@ -50,12 +50,6 @@ process_file() {
 # Main application function
 main() {
     log_info "=== Example Application Started ==="
-    
-    # Log system information
-    log_info_data "System information" \
-        "hostname" "$(hostname)" \
-        "kernel" "$(uname -r)" \
-        "user" "$(whoami)"
     
     # Process some files
     local files=("data.csv" "users.json" "config.yaml" "/etc/hosts")
@@ -70,7 +64,7 @@ main() {
     
     # Test error handling with structured data
     if [ $((RANDOM % 4)) -eq 0 ]; then
-        log_error_data "Database connection failed" \
+        log_error "Database connection failed" \
             "db_host" "db.example.com" \
             "db_port" "5432" \
             "retry_count" "3" \
@@ -88,7 +82,7 @@ main() {
     log_emerg "This is an emergency situation"
     
     # Demonstrate JSON value escaping
-    log_info_data "Testing JSON escaping" \
+    log_info "Testing JSON escaping" \
         "quoted_text" "This has \"quotes\" inside" \
         "path" "/usr/local/bin:/usr/bin:/bin" \
         "json_example" "{\"key\": \"value\", \"nested\": {\"array\": [1, 2, 3]}}" \
