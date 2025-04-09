@@ -7,7 +7,7 @@
 # Exit on errors, undefined variables, and propagate pipe failures
 set -eo pipefail
 
-source ansi_lib/ansi
+source ansi/ansi
 
 # Configuration with defaults (can be overridden before sourcing)
 : "${BASHLOG_DATE_FORMAT:=+%F %T}"
