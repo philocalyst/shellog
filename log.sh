@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# BashLog: A lightweight logging library for dash/bash scripts
+# BashLog: A lightweight logging library for bash scripts
 # Usage: source this file, then use log <level> <message> [data_key data_value ...]
 # Example: log info "Starting process" 
 #          log info "User logged in" username "john.doe" ip "192.168.1.1"
