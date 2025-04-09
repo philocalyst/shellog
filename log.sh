@@ -12,7 +12,6 @@ source bashansi/ansi
 
 # Configuration with defaults (can be overridden before sourcing)
 : "${BASHLOG_DATE_FORMAT:=+%F %T}"
-: "${BASHLOG_FILE:=0}"
 : "${BASHLOG_FILE_PATH:=/tmp/$(basename "$0").log}"
 : "${BASHLOG_JSON:=0}"
 : "${BASHLOG_JSON_PATH:=/tmp/$(basename "$0").log.json}"
@@ -35,7 +34,7 @@ fi
 # Internal function to handle exceptions within the logging system
 _log_exception() {
   (
-    BASHLOG_FILE=0
+    BASHLOG_FILE_PATH=""
     BASHLOG_JSON=0
     BASHLOG_SYSLOG=0
     BASHLOG_CONSOLE=1
