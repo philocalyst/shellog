@@ -34,7 +34,7 @@ if [ ! -f "$LOG_SCRIPT" ]; then
 fi
 
 # Source the SHELLOG library AFTER setting configurations
-source "$LOG_SCRIPT"
+. "$LOG_SCRIPT"
 
 # --- Functions ---
 

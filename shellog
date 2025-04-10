@@ -8,7 +8,7 @@
 # Exit on errors, undefined variables, and propagate pipe failures
 set -eo pipefail
 
-source bashansi/ansi
+. bashansi/ansi
 
 # Configuration with defaults (can be overridden before sourcing)
 : "${SHELLOG_DATE_FORMAT:=+%F %T}"
